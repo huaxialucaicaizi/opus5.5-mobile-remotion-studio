@@ -121,15 +121,17 @@ jobs:
             '{commit: $commit, ref: $ref, run_id: $run_id, run_attempt: $run_attempt, mp4_sha256: $sha256}' \
             > out/build-info.json
 
+          # 新建和更新两条路径共用同一份资产清单
+          ASSETS=(out/ai-explainer.mp4 out/poster.png out/verify-report.json out/build-info.json)
+          TITLE="视频渲染 · ${GITHUB_REF_NAME} · ${GITHUB_SHA::7}"
           if gh release view "$TAG" > /dev/null 2>&1; then
             # 已存在：把标签移到本次提交，再覆盖上传资产，避免“先删后建”造成链接暂时失效
             gh api -X PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}" -f sha="$GITHUB_SHA" -F force=true > /dev/null
-            gh release upload "$TAG" out/ai-explainer.mp4 out/poster.png out/verify-report.json out/build-info.json --clobber
-            gh release edit "$TAG" --title "视频渲染 · ${GITHUB_REF_NAME} · ${GITHUB_SHA::7}" --notes-file notes.md
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes-file notes.md
           else
-            gh release create "$TAG" out/ai-explainer.mp4 out/poster.png out/verify-report.json \
-              --target "$GITHUB_SHA" --prerelease \
-              --title "视频渲染 · ${GITHUB_REF_NAME} · ${GITHUB_SHA::7}" --notes-file notes.md
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --target "$GITHUB_SHA" --prerelease --title "$TITLE" --notes-file notes.md
           fi
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "BASE=$BASE" >> "$GITHUB_ENV"
