@@ -4,19 +4,38 @@
 
 模板：9:16 竖屏 · 1080×1920 · 30fps · 30 秒的 AI 科普动画（主题：大模型是怎样回答问题的）。
 
-## 手机上的工作流
+## 前置条件
 
-1. 在 Claude Code 会话里用一句话描述修改，例如：
+| 需要什么 | 说明 |
+| --- | --- |
+| Claude 账号，可使用 Claude Code 云端会话 | 在手机上的 Claude App 或 claude.ai/code 打开 |
+| GitHub 账号，已连接到 Claude | 本仓库已授权给 Claude Code |
+| 本仓库保持**公开** | 公开仓库使用 GitHub Actions 标准 runner 不计费；改为私有会占用免费额度（见下方） |
+| 不需要 | 电脑、AWS 账号、信用卡、任何 API 密钥 |
+
+## 手机端操作流程
+
+1. **提需求**：在 Claude Code 会话里用一句话描述修改，例如
    - “把标题改成『AI 会取代程序员吗？』”
    - “流程图镜头延长到 10 秒，片尾缩短到 3 秒”
    - “背景换成深绿色，强调色用橙色”
-2. Claude 修改 `src/config/video.config.ts`，跑类型检查、渲染和校验。
-3. 你会拿到：
-   - **预览页**（claude.ai Artifact 链接）：可交互的 Remotion Player、点镜头跳转、成片 MP4 播放和“保存到手机”按钮、校验报告
-   - **MP4 文件**：会话里直接发送的文件卡片
-   - **GitHub Release 固定下载地址**（推送后由 GitHub Actions 云端渲染）：
-     `https://github.com/huaxialucaicaizi/opus5.5-mobile-remotion-studio/releases/download/render-<分支名>/ai-explainer.mp4`
-     （分支名中的 `/` 换成 `-`，例如 `render-main`）
+2. **Claude 修改并自检**：改 `src/config/video.config.ts` → 类型检查 → 在会话容器里渲染 → `npm run verify` 校验 15 项规格。
+3. **你拿到三样东西**：
+   - **MP4 文件卡片**：会话里直接发送，点开即可保存。
+   - **预览页**（claude.ai Artifact 链接）：可交互的播放器（点镜头可跳转）、成片播放、“保存 MP4 到手机”按钮、校验报告。
+   - **固定下载链接**（推送后 GitHub Actions 云端渲染，约 3–5 分钟）：
+     `https://github.com/huaxialucaicaizi/opus5.5-mobile-remotion-studio/releases/download/render-main/ai-explainer.mp4`
+     其他分支把 `render-main` 换成 `render-<分支名，/ 换成 ->`。Release 页面同时显示封面、提交号和校验表。
+4. **满意后合并**：让 Claude 开 PR，检查通过后合并到 `main`，`render-main` 链接随之更新。
+5. **手动重新渲染**（可选）：GitHub App 或网页 → Actions → Render video → Run workflow。
+
+### 哪些内容会自动更新
+
+| 入口 | 何时更新 | 失败时 |
+| --- | --- | --- |
+| GitHub Release 下载链接 | 每次推送并渲染、校验都通过后自动更新；发布后会回读链接，比对 SHA-256 | 不发布，链接保留上一次成功的版本；运行摘要写明失败原因 |
+| GitHub Actions 运行摘要 | 每次运行 | 列出运行环境、校验表、失败说明 |
+| claude.ai 预览页 | **不会自动更新**，需要 Claude 在会话里重新发布（说“更新预览页”即可） | — |
 
 ## 改内容只改一个文件
 
@@ -58,53 +77,98 @@ scripts/
   verify-video.ts          ffprobe/ffmpeg 校验成片
   build-preview.ts         打包预览页
   generate-bgm.ts          重新生成背景音乐
-.github/workflows/render.yml  GitHub Actions 云端渲染
+.github/
+  workflows/render.yml     云端渲染 → 校验 → 发布
+  actions/render/          渲染 + 校验的共用步骤
+  dependabot.yml           每月检查 Action 新版本
 ```
 
 ## 命令
 
 | 命令 | 作用 |
 | --- | --- |
-| `npm ci` | 安装依赖 |
+| `npm ci` | 安装依赖（Node 版本见 `.nvmrc`） |
 | `npm run dev` | 启动 Remotion Studio（开发预览，localhost:3000） |
 | `npm run typecheck` | TypeScript 类型检查 |
 | `npm run build` | `remotion bundle` 构建 |
 | `npm run render` | 渲染 `out/ai-explainer.mp4`（H.264 + AAC，yuv420p，bt709） |
 | `npm run still` | 渲染封面 `out/poster.png` |
-| `npm run verify` | 校验分辨率、帧率、帧数、时长、音频、完整解码、MP4 结构 |
+| `npm run verify` | 校验 15 项：容器、编码、分辨率、帧率、帧数、时长、像素格式、音轨、完整解码、MP4 结构等；不通过时退出码为 1 |
 | `npm run preview:build` | 生成手机预览页 `preview/dist/` |
 | `npm run bgm` | 重新生成背景音乐（`npm run bgm -- 45` 指定秒数） |
 
-在 Claude Code 云端会话里，Remotion 无法下载自带的 Chrome（下载源被网络策略拦截），渲染前设置：
+在 Claude Code 云端会话里渲染前，需要先设置（原因见“已知问题”）：
 
 ```bash
 export REMOTION_BROWSER_EXECUTABLE=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell
 ```
 
-## 云端渲染方案
+## 云端渲染流水线
 
-| 方案 | 状态 | 需要什么 |
+`.github/workflows/render.yml` 有三个 job：
+
+| Job | 环境 | 权限 | 作用 |
+| --- | --- | --- | --- |
+| `render` | `ubuntu-24.04` + Node 22（`.nvmrc`） | `contents: read` | 安装、类型检查、渲染、校验、上传产物；失败则不发布 |
+| `compat` | `ubuntu-latest` + Node 24 | `contents: read` | 兼容性预演，失败**不阻塞**、不发布，用来提前发现升级问题 |
+| `publish` | `ubuntu-24.04` | `contents: write` | 唯一有写权限的 job，不运行项目代码；原地更新 Release，并回读下载链接、比对 SHA-256 |
+
+安全设置：
+
+- 工作流默认 `permissions: {}`，每个 job 只申请自己需要的权限。
+- 所有第三方 Action 都固定在提交 SHA 上（注释里写了版本号），由 Dependabot 每月提 PR 更新。
+- `actions/checkout` 设置 `persist-credentials: false`，渲染阶段拿不到 token。
+- 只使用 GitHub 自动提供的 `GITHUB_TOKEN`，并且只在发布步骤注入；日志中显示为 `***`。工作流不需要、也不读取任何自定义密钥。
+
+## 免费额度与限制
+
+以下是截至 2026 年 10 月的情况，以 GitHub、Anthropic 官方页面为准：
+
+| 项目 | 限制 |
+| --- | --- |
+| GitHub Actions（公开仓库，标准 runner） | 不计费；单个 job 最长 6 小时（本项目设为 30 分钟超时）；免费账户 Linux 并发 20 个 job |
+| GitHub Actions（若改为私有仓库，免费账户） | 每月 2,000 分钟、500 MB 产物存储；本项目每次推送约用 6–10 分钟（render + compat + publish） |
+| Actions 构建产物（zip） | 保留 30 天；下载需要登录 GitHub，手机上更推荐用 Release 链接 |
+| Release 资产 | 单个文件 < 2 GiB；每个分支只保留一份最新视频（覆盖更新） |
+| Actions 缓存 | 每个仓库 10 GB（本项目 npm 缓存约 110 MB） |
+| Claude Code 云端会话 | 按你的 Claude 套餐计算用量；容器是临时的，未提交的文件会丢失；本地渲染 30 秒视频约 100 秒 |
+| claude.ai 预览页 | 默认只有你本人能看；页面 ≤ 16 MB，单个上传文件 ≤ 20 MiB（约 60–80 秒的 1080p 视频） |
+| Remotion 许可 | 个人和 3 人以内的营利组织免费（可商用）；更大的公司需要购买公司许可，见 `node_modules/remotion/LICENSE.md` |
+
+## 已知问题
+
+1. **云端会话无法下载 Remotion 自带的 Chrome**：`remotion.media` 被会话网络策略拦截（403），所以要设置 `REMOTION_BROWSER_EXECUTABLE`，改用容器预装的 Chrome Headless Shell。GitHub Actions 不受影响。
+2. **云端会话访问不了 `remotion.dev` 和 `*.amazonaws.com`**：查官方文档、使用 Lambda 都需要先在会话的网络设置里放行这两个域名。
+3. **会话内读不到完整的 Actions 原始日志**：日志下载会跳转到 Azure Blob 存储，被网络策略拦截。所以环境信息和校验结果都写进了运行摘要，Claude 可以通过 API 读取摘要和失败步骤。
+4. **预览页需要手动更新**：见上方“哪些内容会自动更新”。
+5. **预览页不支持 MP3**：Artifact 的资产类型不包括 mp3，预览页里的背景音乐转成了 AAC（.mp4 容器）再上传，不影响成片。
+6. **音轨比视频长 16 毫秒**（30.016 s 对 30.000 s）：这是 AAC 编码器的正常填充，播放器会按视频时长处理。
+7. **手动 Run workflow 只能在合并到 `main` 之后使用**：这是 GitHub 对 `workflow_dispatch` 的限制。在分支上推送仍会自动渲染。
+8. **分支 Release 会累积**：每个渲染过的分支都会留下一个 `render-<分支>` 预发布版本，不再需要时在 Releases 页面删除即可。
+
+## 升级方案
+
+| 项目 | 现状 | 计划 |
 | --- | --- | --- |
-| Claude Code 云端会话内渲染 | ✅ 可用 | 无。30 秒视频约 100 秒渲染完 |
-| GitHub Actions（`.github/workflows/render.yml`） | ✅ 已配置 | 无。公开仓库标准 runner 免费；推送修改后自动渲染并发布到 Release |
-| Remotion Lambda | ⏸ 未配置 | 见下方清单 |
+| Action 运行时 | 已从 Node 20 版本（checkout@v4 等）升级到 Node 24 版本（checkout v7.0.1、setup-node v7.1.0、upload-artifact v7.0.2、download-artifact v8.0.2），弃用提醒已消除 | Dependabot 每月提 PR 更新 SHA |
+| Ubuntu | `render` 固定 `ubuntu-24.04`；`compat` 跑 `ubuntu-latest`（正在迁移到 Ubuntu 26） | `compat` 连续通过后，把 `render` 和 `publish` 的 `runs-on` 改成 `ubuntu-26.04`；24.04 在 GitHub 宣布停用前仍可继续使用 |
+| Node.js | 渲染用 Node 22（维护期到 2027-04）；`compat` 测试 Node 24 | `compat` 稳定后把 `.nvmrc` 改为 `24`，并更新 `package.json` 的 `engines` |
+| Remotion | 4.0.539，所有 `@remotion/*` 包锁定同一版本 | 用 `npx remotion upgrade` 一起升级；升级到 Remotion 5 前先看许可变更 |
+| 云端渲染 | GitHub Actions | 需要批量、长视频或更快并行渲染时再接入 Lambda（见下节） |
 
-### Remotion Lambda 需要你提供 / 授权的内容
+## Remotion Lambda（未配置）
 
-本仓库没有假设以下任何一项已经就绪：
+对 30 秒的模板来说 GitHub Actions 已经足够。Lambda 只在大量、长视频或需要快速并行渲染时才划算。接入前需要你提供或授权：
 
-1. **AWS 账号**（需绑定信用卡，Lambda 与 S3 按量计费；短视频单次渲染通常只要几美分，但属于付费服务）。
-2. **IAM 配置**（需要你在 AWS 控制台操作）：
+1. **AWS 账号**：需绑定信用卡，Lambda 和 S3 按用量付费；短视频单次渲染通常只要几美分。
+2. **IAM 配置**（在 AWS 控制台操作）：
    - 创建角色 `remotion-lambda-role`，附加 `npx remotion lambda policies role` 输出的策略；
    - 创建 IAM 用户，附加 `npx remotion lambda policies user` 输出的策略，生成 Access Key。
-3. **凭据**：把 `REMOTION_AWS_ACCESS_KEY_ID`、`REMOTION_AWS_SECRET_ACCESS_KEY` 存为 GitHub Actions Secrets 或云端环境的环境变量，并选择区域 `REMOTION_AWS_REGION`（如 `ap-northeast-1`）。不要把密钥写进仓库或聊天。
-4. **部署**（凭据就绪后 Claude 可代为执行）：
-   `npm i -E @remotion/lambda@4.0.539`，`npx remotion lambda policies validate`，`npx remotion lambda functions deploy`，`npx remotion lambda sites create src/index.ts --site-name=mobile-studio`，然后 `npx remotion lambda render <serve-url> AIExplainer`。
-5. **网络**：当前 Claude Code 云端环境的网络策略未放行 `*.amazonaws.com` 与 `remotion.dev`，需要在环境设置中放行，或者改为在 GitHub Actions 里调用 Lambda。
-6. **配额**：新 AWS 账号的 Lambda 并发上限可能很低，必要时需申请提额。
-
-对 30 秒的模板来说，GitHub Actions 已经足够（单次约 3–5 分钟），Lambda 主要在需要大量、长视频、快速并行渲染时才划算。
+3. **凭据**：把 `REMOTION_AWS_ACCESS_KEY_ID`、`REMOTION_AWS_SECRET_ACCESS_KEY` 存为 GitHub Actions Secrets，并选择区域 `REMOTION_AWS_REGION`（如 `ap-northeast-1`）。不要把密钥写进仓库或发在聊天里。
+4. **部署**（凭据就绪后 Claude 可以代为执行）：`npm i -E @remotion/lambda@<与 remotion 相同的版本>`，`npx remotion lambda policies validate`，`npx remotion lambda functions deploy`，`npx remotion lambda sites create src/index.ts --site-name=mobile-studio`，`npx remotion lambda render <serve-url> AIExplainer`。
+5. **网络**：放行 `*.amazonaws.com`，或者改为在 GitHub Actions 里调用 Lambda。
+6. **配额**：新 AWS 账号的 Lambda 并发上限可能很低，必要时需要申请提高。
 
 ## 许可
 
-Remotion 对个人和 3 人以内的营利组织免费（包括商用）；更大的公司需要购买公司许可。详见 `node_modules/remotion/LICENSE.md`。背景音乐由 `scripts/generate-bgm.ts` 程序合成，无第三方版权。
+背景音乐由 `scripts/generate-bgm.ts` 程序合成，没有第三方版权。Remotion 的许可条款见上方“免费额度与限制”。

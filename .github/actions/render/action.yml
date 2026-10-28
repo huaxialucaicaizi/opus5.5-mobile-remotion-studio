@@ -1,0 +1,81 @@
+# 渲染 + 校验的共用步骤（render 与 compat 两个 job 共用）。
+# 调用前需要先 actions/checkout。本 action 不需要、也不会用到任何密钥。
+name: Render and verify
+description: 安装依赖、类型检查、渲染 MP4 与封面、校验视频规格
+inputs:
+  node-version:
+    description: Node.js 版本
+    required: true
+  artifact-name:
+    description: 上传的构建产物名称
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+
+    - name: 安装中文字体与 ffmpeg
+      shell: bash
+      run: |
+        sudo apt-get update -q
+        sudo apt-get install -y -q --no-install-recommends fonts-noto-cjk ffmpeg
+
+    - name: 安装依赖
+      shell: bash
+      run: npm ci --no-audit --no-fund
+
+    - name: 类型检查
+      shell: bash
+      run: npm run typecheck
+
+    - name: 准备 Chrome Headless Shell
+      shell: bash
+      run: npx remotion browser ensure
+
+    - name: 记录运行环境
+      shell: bash
+      run: |
+        {
+          echo "### 运行环境"
+          echo
+          echo "| 组件 | 版本 |"
+          echo "| --- | --- |"
+          echo "| 系统 | $(. /etc/os-release && echo "$PRETTY_NAME") |"
+          echo "| Node.js | $(node --version) |"
+          echo "| npm | $(npm --version) |"
+          echo "| Remotion | $(node -p 'require("remotion/package.json").version') |"
+          echo "| ffmpeg | $(ffmpeg -version | head -1 | cut -d' ' -f3) |"
+          CHROME="$(find node_modules/.remotion -type f -name 'chrome-headless-shell' 2>/dev/null | head -1)"
+          echo "| Chrome Headless Shell | $([ -n "$CHROME" ] && "$CHROME" --version 2>/dev/null || echo 未找到) |"
+          echo "| CJK 字体 | $(fc-list :lang=zh family | head -1) |"
+          echo
+        } | tee -a "$GITHUB_STEP_SUMMARY"
+
+    - name: 渲染 MP4 与封面
+      shell: bash
+      run: |
+        npm run render -- --log=warn
+        npm run still -- --log=warn
+
+    - name: 校验视频（尺寸 / 时长 / 帧率 / 音频 / 完整性）
+      shell: bash
+      run: |
+        set +e
+        npm run verify
+        status=$?
+        { echo "### 视频校验"; echo; cat out/verify-report.md 2>/dev/null || echo "未生成校验报告"; } >> "$GITHUB_STEP_SUMMARY"
+        exit $status
+
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          out/ai-explainer.mp4
+          out/poster.png
+          out/verify-report.json
+          out/verify-report.md
+        if-no-files-found: error
+        retention-days: 30
