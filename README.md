@@ -118,6 +118,7 @@ export REMOTION_BROWSER_EXECUTABLE=/opt/pw-browsers/chromium_headless_shell-1243
 - 工作流默认 `permissions: {}`，每个 job 只申请自己需要的权限。
 - 所有第三方 Action 都固定在提交 SHA 上（注释里写了版本号），由 Dependabot 每月提 PR 更新。
 - `actions/checkout` 设置 `persist-credentials: false`，渲染阶段拿不到 token。
+- 不使用依赖缓存，每次运行都从 npm registry 全新安装，`npm ci` 会按 `package-lock.json` 校验每个包的完整性哈希。
 - 只使用 GitHub 自动提供的 `GITHUB_TOKEN`，并且只在发布步骤注入；日志中显示为 `***`。工作流不需要、也不读取任何自定义密钥。
 
 ## 免费额度与限制
@@ -130,7 +131,6 @@ export REMOTION_BROWSER_EXECUTABLE=/opt/pw-browsers/chromium_headless_shell-1243
 | GitHub Actions（若改为私有仓库，免费账户） | 每月 2,000 分钟、500 MB 产物存储；本项目每次推送约用 6–10 分钟（render + compat + publish） |
 | Actions 构建产物（zip） | 保留 30 天；下载需要登录 GitHub，手机上更推荐用 Release 链接 |
 | Release 资产 | 单个文件 < 2 GiB；每个分支只保留一份最新视频（覆盖更新） |
-| Actions 缓存 | 每个仓库 10 GB（本项目 npm 缓存约 110 MB） |
 | Claude Code 云端会话 | 按你的 Claude 套餐计算用量；容器是临时的，未提交的文件会丢失；本地渲染 30 秒视频约 100 秒 |
 | claude.ai 预览页 | 默认只有你本人能看；页面 ≤ 16 MB，单个上传文件 ≤ 20 MiB（约 60–80 秒的 1080p 视频） |
 | Remotion 许可 | 个人和 3 人以内的营利组织免费（可商用）；更大的公司需要购买公司许可，见 `node_modules/remotion/LICENSE.md` |

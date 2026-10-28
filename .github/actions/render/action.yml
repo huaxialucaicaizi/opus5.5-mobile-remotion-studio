@@ -12,10 +12,12 @@ inputs:
 runs:
   using: composite
   steps:
+    # 不使用依赖缓存：每次都从 registry 全新安装（只多约 20 秒），
+    # 保证每次运行都是干净环境，也避免分支之间共享缓存带来的投毒风险。
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: ${{ inputs.node-version }}
-        cache: npm
+        package-manager-cache: false
 
     - name: 安装中文字体与 ffmpeg
       shell: bash
