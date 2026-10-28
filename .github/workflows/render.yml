@@ -1,0 +1,163 @@
+# 云端渲染：在 GitHub 托管的 Ubuntu 机器上渲染 MP4，校验后发布到 GitHub Release。
+#
+# 触发方式：
+#   1. 推送修改了视频源码 / 配置 / 工作流的提交（main 或 claude/** 分支）→ 自动渲染
+#   2. 手动：仓库 Actions → Render video → Run workflow（该文件需在默认分支上）
+#
+# 产出（固定下载地址，每次成功渲染后原地更新；失败时保留上一次成功的版本）：
+#   https://github.com/<owner>/<repo>/releases/download/render-<分支名，/ 换成 ->/ai-explainer.mp4
+#
+# Job 说明：
+#   render   —— 稳定环境（ubuntu-24.04 + .nvmrc 中的 Node 版本），只读权限，结果决定是否发布
+#   compat   —— 兼容性预演（ubuntu-26.04 + Node 24），失败不阻塞、不发布，用于提前发现升级问题
+#   publish  —— 唯一拥有写权限的 job，只处理已校验通过的产物，不执行项目代码
+name: Render video
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'scripts/**'
+      - 'remotion.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - '.github/**'
+
+# 默认不授予任何权限，每个 job 按需申请
+permissions: {}
+
+# 同一分支的渲染排队执行，不中途取消，避免发布到一半被打断导致下载链接短暂失效
+concurrency:
+  group: render-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  render:
+    name: render (ubuntu-24.04 · Node 22)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: node
+        run: echo "version=$(cat .nvmrc)" >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/render
+        with:
+          node-version: ${{ steps.node.outputs.version }}
+          artifact-name: render-output
+
+      - name: 失败说明
+        if: failure()
+        run: |
+          {
+            echo "## ❌ 渲染失败"
+            echo
+            echo "本次没有发布新视频，下载链接仍指向上一次成功的版本。"
+            echo "请展开上方标记为失败（红色 ×）的步骤查看日志；若是“视频校验”失败，上面的校验表会标出未通过的项目。"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  compat:
+    # 显式使用 ubuntu-26.04：ubuntu-latest 正在分批迁移，实际仍可能分到 24.04，测不到新系统
+    name: compat (ubuntu-26.04 · Node 24，不阻塞)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/render
+        with:
+          node-version: '24'
+          artifact-name: compat-output
+
+  publish:
+    needs: render
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: render-output
+          path: out
+
+      - name: 发布到 GitHub Release（原地更新，手机可直接下载）
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TAG="render-${GITHUB_REF_NAME//\//-}"
+          BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          {
+            echo "**最新成功渲染** · 分支 \`${GITHUB_REF_NAME}\` · 提交 \`${GITHUB_SHA::7}\` · $(date -u '+%Y-%m-%d %H:%M UTC') · [运行记录](${RUN_URL})"
+            echo
+            echo "📥 [下载 MP4](${BASE}/ai-explainer.mp4)"
+            echo
+            echo "<img src=\"${BASE}/poster.png\" width=\"270\" alt=\"封面\">"
+            echo
+            cat out/verify-report.md
+          } > notes.md
+          # 记录本次构建信息，发布后回读它来确认下载链接已指向本次产物
+          # （渲染结果是确定性的，内容不变时仅比对视频哈希无法区分新旧）
+          jq -n --arg commit "$GITHUB_SHA" --arg ref "$GITHUB_REF_NAME" \
+            --arg run_id "$GITHUB_RUN_ID" --arg run_attempt "$GITHUB_RUN_ATTEMPT" \
+            --arg sha256 "$(jq -r .sha256 out/verify-report.json)" \
+            '{commit: $commit, ref: $ref, run_id: $run_id, run_attempt: $run_attempt, mp4_sha256: $sha256}' \
+            > out/build-info.json
+
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # 已存在：把标签移到本次提交，再覆盖上传资产，避免“先删后建”造成链接暂时失效
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}" -f sha="$GITHUB_SHA" -F force=true > /dev/null
+            gh release upload "$TAG" out/ai-explainer.mp4 out/poster.png out/verify-report.json out/build-info.json --clobber
+            gh release edit "$TAG" --title "视频渲染 · ${GITHUB_REF_NAME} · ${GITHUB_SHA::7}" --notes-file notes.md
+          else
+            gh release create "$TAG" out/ai-explainer.mp4 out/poster.png out/verify-report.json \
+              --target "$GITHUB_SHA" --prerelease \
+              --title "视频渲染 · ${GITHUB_REF_NAME} · ${GITHUB_SHA::7}" --notes-file notes.md
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "BASE=$BASE" >> "$GITHUB_ENV"
+
+      - name: 回读下载链接，确认已是本次产物
+        run: |
+          set -euo pipefail
+          expected="$(jq -r .sha256 out/verify-report.json)"
+          run="${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}"
+          for i in 1 2 3 4 5; do
+            info="$(curl -fsSL "${BASE}/build-info.json" | jq -r '"\(.commit) \(.run_id)/\(.run_attempt)"')" || info=""
+            actual="$(curl -fsSL "${BASE}/ai-explainer.mp4" | sha256sum | cut -d' ' -f1)" || actual=""
+            [ "$info" = "${GITHUB_SHA} ${run}" ] && [ "$actual" = "$expected" ] && break
+            sleep $((i * 5))
+          done
+          if [ "$info" != "${GITHUB_SHA} ${run}" ]; then
+            echo "::error::下载链接仍指向旧的构建（期望 ${GITHUB_SHA::7} 运行 ${run}，实际 ${info:-读取失败}）"
+            exit 1
+          fi
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::下载链接返回的视频与本次渲染不一致（期望 ${expected}，实际 ${actual:-下载失败}）"
+            exit 1
+          fi
+          echo "::notice title=已发布::提交 ${GITHUB_SHA::7} · 运行 ${run} · SHA-256 ${expected} · ${BASE}/ai-explainer.mp4"
+          {
+            echo "## ✅ 已发布"
+            echo
+            echo "📥 MP4 下载：${BASE}/ai-explainer.mp4"
+            echo
+            echo "已从下载链接回读确认：构建信息为提交 \`${GITHUB_SHA::7}\`、运行 ${run}；视频 SHA-256 \`${expected}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

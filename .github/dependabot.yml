@@ -1,0 +1,13 @@
+# 每月检查一次 GitHub Actions 的新版本（工作流中的 Action 固定在提交 SHA 上，
+# 由 Dependabot 开 PR 更新 SHA，合并前会自动跑渲染校验）。
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/render
+    schedule:
+      interval: monthly
+    groups:
+      github-actions:
+        patterns: ['*']

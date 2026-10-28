@@ -1,0 +1,5 @@
+# actionlint 内置的 runner 标签列表比 GitHub 实际提供的旧。
+# ubuntu-26.04 已在 actions/runner-images 的 README 中列为可用标签。
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
