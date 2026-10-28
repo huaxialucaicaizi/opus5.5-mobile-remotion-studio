@@ -9,7 +9,7 @@
 #
 # Job 说明：
 #   render   —— 稳定环境（ubuntu-24.04 + .nvmrc 中的 Node 版本），只读权限，结果决定是否发布
-#   compat   —— 兼容性预演（ubuntu-latest + Node 24），失败不阻塞、不发布，用于提前发现升级问题
+#   compat   —— 兼容性预演（ubuntu-26.04 + Node 24），失败不阻塞、不发布，用于提前发现升级问题
 #   publish  —— 唯一拥有写权限的 job，只处理已校验通过的产物，不执行项目代码
 name: Render video
 
@@ -66,8 +66,9 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   compat:
-    name: compat (ubuntu-latest · Node 24，不阻塞)
-    runs-on: ubuntu-latest
+    # 显式使用 ubuntu-26.04：ubuntu-latest 正在分批迁移，实际仍可能分到 24.04，测不到新系统
+    name: compat (ubuntu-26.04 · Node 24，不阻塞)
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     continue-on-error: true
     permissions:

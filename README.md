@@ -110,7 +110,7 @@ export REMOTION_BROWSER_EXECUTABLE=/opt/pw-browsers/chromium_headless_shell-1243
 | Job | 环境 | 权限 | 作用 |
 | --- | --- | --- | --- |
 | `render` | `ubuntu-24.04` + Node 22（`.nvmrc`） | `contents: read` | 安装、类型检查、渲染、校验、上传产物；失败则不发布 |
-| `compat` | `ubuntu-latest` + Node 24 | `contents: read` | 兼容性预演，失败**不阻塞**、不发布，用来提前发现升级问题 |
+| `compat` | `ubuntu-26.04` + Node 24 | `contents: read` | 兼容性预演，失败**不阻塞**、不发布，用来提前发现升级问题 |
 | `publish` | `ubuntu-24.04` | `contents: write` | 唯一有写权限的 job，不运行项目代码；原地更新 Release，并回读下载链接，核对提交号、运行编号和 SHA-256 |
 
 安全设置：
@@ -151,7 +151,7 @@ export REMOTION_BROWSER_EXECUTABLE=/opt/pw-browsers/chromium_headless_shell-1243
 | 项目 | 现状 | 计划 |
 | --- | --- | --- |
 | Action 运行时 | 已从 Node 20 版本（checkout@v4 等）升级到 Node 24 版本（checkout v7.0.1、setup-node v7.1.0、upload-artifact v7.0.2、download-artifact v8.0.2），弃用提醒已消除 | Dependabot 每月提 PR 更新 SHA |
-| Ubuntu | `render` 固定 `ubuntu-24.04`；`compat` 跑 `ubuntu-latest`（正在迁移到 Ubuntu 26） | `compat` 连续通过后，把 `render` 和 `publish` 的 `runs-on` 改成 `ubuntu-26.04`；24.04 在 GitHub 宣布停用前仍可继续使用 |
+| Ubuntu | `render` 固定 `ubuntu-24.04`；`compat` 显式跑 `ubuntu-26.04`（`ubuntu-latest` 正在分批迁移到 26，实测仍可能分到 24.04，所以不用它做兼容性测试） | `compat` 连续通过后，把 `render` 和 `publish` 的 `runs-on` 改成 `ubuntu-26.04`；24.04 在 GitHub 宣布停用前仍可继续使用 |
 | Node.js | 渲染用 Node 22（维护期到 2027-04）；`compat` 测试 Node 24 | `compat` 稳定后把 `.nvmrc` 改为 `24`，并更新 `package.json` 的 `engines` |
 | Remotion | 4.0.539，所有 `@remotion/*` 包锁定同一版本 | 用 `npx remotion upgrade` 一起升级；升级到 Remotion 5 前先看许可变更 |
 | 云端渲染 | GitHub Actions | 需要批量、长视频或更快并行渲染时再接入 Lambda（见下节） |
