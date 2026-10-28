@@ -12,13 +12,20 @@
     "still": "remotion still AIExplainer out/poster.png --frame=45",
     "verify": "node scripts/verify-video.ts out/ai-explainer.mp4",
     "preview:build": "node scripts/build-preview.ts",
-    "bgm": "node scripts/generate-bgm.ts"
+    "bgm": "node scripts/generate-bgm.ts",
+    "render:history": "remotion render ChinaHistory out/china-history.mp4",
+    "still:history": "remotion still ChinaHistory out/china-history-poster.png --frame=60",
+    "verify:history": "node scripts/verify-video.ts out/china-history.mp4 --comp=ChinaHistory",
+    "bgm:history": "node scripts/generate-history-audio.ts"
   },
   "engines": {
     "node": ">=22.18"
   },
   "dependencies": {
+    "@fontsource/ma-shan-zheng": "5.3.1",
+    "@fontsource/zcool-kuaile": "5.3.0",
     "@remotion/cli": "4.0.539",
+    "@remotion/paths": "4.0.539",
     "@remotion/player": "4.0.539",
     "react": "19.3.1",
     "react-dom": "19.3.1",

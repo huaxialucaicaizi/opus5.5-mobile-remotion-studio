@@ -37,6 +37,23 @@
 | GitHub Actions 运行摘要 | 每次运行 | 列出运行环境、校验表、失败说明 |
 | claude.ai 预览页 | **不会自动更新**，需要 Claude 在会话里重新发布（说“更新预览页”即可） | — |
 
+## 第二部作品：《中华五千年 · 一分钟速通》（`ChinaHistory`）
+
+竖屏 1080×1920 · 30fps · 63.5 秒的线稿风格历史动画：片头“五千年 → 一分钟”，然后速通 13 个时代（上古 → 今天），最后是片尾。
+
+- **画风**：宣纸底色 + 墨线逐笔绘制的插画；线条带轻微抖动的手绘感（“沸腾线”滤镜）；红色印章盖下时带震屏；毛笔标题（Ma Shan Zheng）+ 手写感正文（站酷快乐体），两种字体都是 OFL 开源许可
+- **节奏**：年份计数器滚动，底部时间轴实时显示进度，解说逐字出现，重点词有红色荧光笔划过
+- **配乐**：`scripts/generate-history-audio.ts` 程序合成，没有版权问题。用 Karplus-Strong 算法合成古筝式拨弦，D 宫五声音阶、120 BPM，配低音、大鼓、木鱼、碰铃和刮奏；印章的“咚”和转场的“嗖”按配置里的时间自动对齐到拍点
+- **改内容**：只改 `src/history/config.ts`，包括每个时代的印章字、年份、标题、解说（用 `\n` 手动断行，每行不超过 16 字）、重点词、插画、时长。改了时长后运行 `npm run bgm:history` 重新生成配乐
+- **插画**：`src/history/art.ts`，400×400 坐标系下的笔画路径
+
+| 命令 | 作用 |
+| --- | --- |
+| `npm run render:history` | 渲染 `out/china-history.mp4`（4 核机器约 7 分钟） |
+| `npm run still:history` | 渲染封面 |
+| `npm run verify:history` | 按 `ChinaHistory` 的规格校验 15 项 |
+| `npm run bgm:history` | 重新生成配乐 + 音效 |
+
 ## 改内容只改一个文件
 
 `src/config/video.config.ts` 包含全部可调内容：
