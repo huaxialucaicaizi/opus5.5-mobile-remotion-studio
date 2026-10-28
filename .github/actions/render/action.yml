@@ -53,6 +53,8 @@ runs:
           echo "| CJK 字体 | $(fc-list :lang=zh family | head -1) |"
           echo
         } | tee -a "$GITHUB_STEP_SUMMARY"
+        # 同时输出为注解，便于通过 API（check-runs annotations）读取
+        echo "::notice title=运行环境::$(. /etc/os-release && echo "$PRETTY_NAME") · Node $(node --version) · npm $(npm --version) · Remotion $(node -p 'require("remotion/package.json").version') · ffmpeg $(ffmpeg -version | head -1 | cut -d' ' -f3)"
 
     - name: 渲染 MP4 与封面
       shell: bash

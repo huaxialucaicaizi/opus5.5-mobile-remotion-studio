@@ -112,11 +112,18 @@ jobs:
             echo
             cat out/verify-report.md
           } > notes.md
+          # 记录本次构建信息，发布后回读它来确认下载链接已指向本次产物
+          # （渲染结果是确定性的，内容不变时仅比对视频哈希无法区分新旧）
+          jq -n --arg commit "$GITHUB_SHA" --arg ref "$GITHUB_REF_NAME" \
+            --arg run_id "$GITHUB_RUN_ID" --arg run_attempt "$GITHUB_RUN_ATTEMPT" \
+            --arg sha256 "$(jq -r .sha256 out/verify-report.json)" \
+            '{commit: $commit, ref: $ref, run_id: $run_id, run_attempt: $run_attempt, mp4_sha256: $sha256}' \
+            > out/build-info.json
 
           if gh release view "$TAG" > /dev/null 2>&1; then
             # 已存在：把标签移到本次提交，再覆盖上传资产，避免“先删后建”造成链接暂时失效
             gh api -X PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}" -f sha="$GITHUB_SHA" -F force=true > /dev/null
-            gh release upload "$TAG" out/ai-explainer.mp4 out/poster.png out/verify-report.json --clobber
+            gh release upload "$TAG" out/ai-explainer.mp4 out/poster.png out/verify-report.json out/build-info.json --clobber
             gh release edit "$TAG" --title "视频渲染 · ${GITHUB_REF_NAME} · ${GITHUB_SHA::7}" --notes-file notes.md
           else
             gh release create "$TAG" out/ai-explainer.mp4 out/poster.png out/verify-report.json \
@@ -130,19 +137,26 @@ jobs:
         run: |
           set -euo pipefail
           expected="$(jq -r .sha256 out/verify-report.json)"
+          run="${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}"
           for i in 1 2 3 4 5; do
+            info="$(curl -fsSL "${BASE}/build-info.json" | jq -r '"\(.commit) \(.run_id)/\(.run_attempt)"')" || info=""
             actual="$(curl -fsSL "${BASE}/ai-explainer.mp4" | sha256sum | cut -d' ' -f1)" || actual=""
-            [ "$actual" = "$expected" ] && break
+            [ "$info" = "${GITHUB_SHA} ${run}" ] && [ "$actual" = "$expected" ] && break
             sleep $((i * 5))
           done
-          if [ "$actual" != "$expected" ]; then
-            echo "::error::下载链接返回的文件与本次渲染不一致（期望 ${expected}，实际 ${actual:-下载失败}）"
+          if [ "$info" != "${GITHUB_SHA} ${run}" ]; then
+            echo "::error::下载链接仍指向旧的构建（期望 ${GITHUB_SHA::7} 运行 ${run}，实际 ${info:-读取失败}）"
             exit 1
           fi
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::下载链接返回的视频与本次渲染不一致（期望 ${expected}，实际 ${actual:-下载失败}）"
+            exit 1
+          fi
+          echo "::notice title=已发布::提交 ${GITHUB_SHA::7} · 运行 ${run} · SHA-256 ${expected} · ${BASE}/ai-explainer.mp4"
           {
             echo "## ✅ 已发布"
             echo
             echo "📥 MP4 下载：${BASE}/ai-explainer.mp4"
             echo
-            echo "SHA-256 \`${expected}\`（已从下载链接回读校验）"
+            echo "已从下载链接回读确认：构建信息为提交 \`${GITHUB_SHA::7}\`、运行 ${run}；视频 SHA-256 \`${expected}\`"
           } >> "$GITHUB_STEP_SUMMARY"

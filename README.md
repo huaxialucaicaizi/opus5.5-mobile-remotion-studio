@@ -33,7 +33,7 @@
 
 | 入口 | 何时更新 | 失败时 |
 | --- | --- | --- |
-| GitHub Release 下载链接 | 每次推送并渲染、校验都通过后自动更新；发布后会回读链接，比对 SHA-256 | 不发布，链接保留上一次成功的版本；运行摘要写明失败原因 |
+| GitHub Release 下载链接 | 每次推送并渲染、校验都通过后自动更新；发布后会回读 `build-info.json`（提交号、运行编号）和视频 SHA-256，确认链接已指向本次产物 | 不发布，链接保留上一次成功的版本；运行摘要写明失败原因 |
 | GitHub Actions 运行摘要 | 每次运行 | 列出运行环境、校验表、失败说明 |
 | claude.ai 预览页 | **不会自动更新**，需要 Claude 在会话里重新发布（说“更新预览页”即可） | — |
 
@@ -111,7 +111,7 @@ export REMOTION_BROWSER_EXECUTABLE=/opt/pw-browsers/chromium_headless_shell-1243
 | --- | --- | --- | --- |
 | `render` | `ubuntu-24.04` + Node 22（`.nvmrc`） | `contents: read` | 安装、类型检查、渲染、校验、上传产物；失败则不发布 |
 | `compat` | `ubuntu-latest` + Node 24 | `contents: read` | 兼容性预演，失败**不阻塞**、不发布，用来提前发现升级问题 |
-| `publish` | `ubuntu-24.04` | `contents: write` | 唯一有写权限的 job，不运行项目代码；原地更新 Release，并回读下载链接、比对 SHA-256 |
+| `publish` | `ubuntu-24.04` | `contents: write` | 唯一有写权限的 job，不运行项目代码；原地更新 Release，并回读下载链接，核对提交号、运行编号和 SHA-256 |
 
 安全设置：
 
