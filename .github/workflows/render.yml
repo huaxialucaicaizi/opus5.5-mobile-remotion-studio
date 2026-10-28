@@ -1,0 +1,92 @@
+# 云端渲染：在 GitHub 托管的 Ubuntu 机器上渲染 MP4，并发布到 GitHub Release。
+#
+# 触发方式：
+#   1. 推送修改了视频源码/配置的提交（main 或 claude/** 分支）→ 自动渲染
+#   2. 手动：仓库 Actions → Render video → Run workflow（需该文件已在默认分支上）
+#
+# 产出（固定下载地址，每次渲染覆盖）：
+#   https://github.com/<owner>/<repo>/releases/download/render-<分支名，/ 换成 ->/ai-explainer.mp4
+name: Render video
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'scripts/**'
+      - 'remotion.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/render.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: render-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装中文字体与 ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk ffmpeg
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      - name: 准备 Chrome Headless Shell
+        run: npx remotion browser ensure
+
+      - name: 渲染 MP4 与封面
+        run: |
+          npm run render
+          npm run still
+
+      - name: 校验视频（尺寸 / 时长 / 帧率 / 音频 / 完整性）
+        run: |
+          npm run verify
+          cat out/verify-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-explainer-${{ github.sha }}
+          path: |
+            out/ai-explainer.mp4
+            out/poster.png
+            out/verify-report.json
+          retention-days: 30
+
+      - name: 发布到 GitHub Release（手机可直接下载）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="render-${GITHUB_REF_NAME//\//-}"
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          {
+            echo "最新渲染：分支 \`${GITHUB_REF_NAME}\` · 提交 ${GITHUB_SHA::7}"
+            echo
+            cat out/verify-report.md
+          } > notes.md
+          gh release create "$TAG" out/ai-explainer.mp4 out/poster.png out/verify-report.json \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "视频渲染 · ${GITHUB_REF_NAME}" --notes-file notes.md
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/ai-explainer.mp4"
+          echo "### 📥 MP4 下载：[$URL]($URL)" >> "$GITHUB_STEP_SUMMARY"

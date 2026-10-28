@@ -1,0 +1,34 @@
+{
+  "name": "mobile-remotion-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "手机端驱动的 Remotion 竖屏 AI 科普视频模板（1080×1920 · 30fps · 30s）",
+  "type": "module",
+  "scripts": {
+    "dev": "remotion studio",
+    "typecheck": "tsc --noEmit",
+    "build": "remotion bundle --out-dir=build",
+    "render": "remotion render AIExplainer out/ai-explainer.mp4",
+    "still": "remotion still AIExplainer out/poster.png --frame=45",
+    "verify": "node scripts/verify-video.ts out/ai-explainer.mp4",
+    "preview:build": "node scripts/build-preview.ts",
+    "bgm": "node scripts/generate-bgm.ts"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.539",
+    "@remotion/player": "4.0.539",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.539"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  }
+}

@@ -1,0 +1,115 @@
+<title>AI 科普竖屏工作室</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;800;900&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* 布局：单列手机优先，竖屏舞台居中，下方是镜头时间线与报告。配色取自视频本身（深海军蓝 + 青 + 紫）。 */
+  :root {
+    --bg: #0b1026;
+    --surface: #131a3a;
+    --line: #26305e;
+    --fg: #eef2fb;
+    --muted: #93a0c4;
+    --teal: #5eead4;
+    --violet: #a78bfa;
+    --bad: #fb7185;
+    --font-ui: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+    color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 15px; line-height: 1.6; }
+  .wrap { max-width: 520px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 14px; }
+  header { display: flex; flex-direction: column; gap: 6px; }
+  .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--teal); text-transform: uppercase; }
+  h1 { margin: 0; font-size: 26px; font-weight: 900; line-height: 1.25; text-wrap: balance; }
+  h2 { margin: 18px 0 0; font-size: 17px; font-weight: 800; }
+  .specs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; }
+  .specs li { font-family: var(--font-mono); font-size: 12px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  [hidden] { display: none !important; }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  #app { display: flex; flex-direction: column; gap: 14px; }
+  section { display: flex; flex-direction: column; gap: 12px; }
+  .segmented { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  .segmented button { font: inherit; font-weight: 600; color: var(--muted); background: transparent; border: 0; border-radius: 9px; padding: 9px 0; cursor: pointer; }
+  .segmented button[aria-selected="true"] { background: var(--line); color: var(--fg); }
+  .stage { width: 100%; max-width: 360px; margin: 0 auto; }
+  .stage video { display: block; width: 100%; aspect-ratio: 9 / 16; max-width: 100%; border-radius: 14px; background: #000; }
+  .empty { aspect-ratio: 9 / 16; max-width: 100%; display: grid; place-items: center; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); }
+  .hint { margin: 0; text-align: center; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .timeline { display: flex; gap: 4px; }
+  .scene { position: relative; overflow: hidden; min-width: 0; flex-basis: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 7px; font: inherit; color: var(--fg); text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+  .scene.is-active { border-color: var(--teal); }
+  .scene-fill { position: absolute; inset: auto 0 0 0; height: 3px; background: var(--teal); transform-origin: left; }
+  .scene-index { font-family: var(--font-mono); font-size: 11px; color: var(--teal); }
+  .scene-name { font-size: 12px; font-weight: 600; line-height: 1.3; word-break: break-all; }
+  .scene-dur { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+  .btn { font: inherit; font-weight: 600; font-size: 14px; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); text-decoration: none; cursor: pointer; }
+  .btn-primary { background: var(--teal); border-color: var(--teal); color: var(--bg); }
+  .btn:focus-visible, .segmented button:focus-visible, .scene:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+  .status { width: 100%; text-align: center; font-size: 13px; color: var(--muted); }
+  .verdict { margin: 0; font-weight: 800; }
+  .ok { color: var(--teal); }
+  .bad { color: var(--bad); }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; }
+  tr:last-child td { border-bottom: 0; }
+  td.mono { word-break: break-all; }
+  td:last-child { white-space: nowrap; }
+  .sha { margin: 0; font-size: 11px; word-break: break-all; }
+  .howto { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .howto q { color: var(--fg); quotes: "“" "”"; }
+  a { color: var(--teal); }
+  footer { font-size: 12px; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { .scene-fill { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Remotion · 竖屏模板</span>
+    <h1>大模型是怎样回答问题的？</h1>
+    <ul class="specs">
+      <li>1080×1920</li>
+      <li>9:16</li>
+      <li>30 fps</li>
+      <li>30 s · 900 帧</li>
+      <li>H.264 + AAC</li>
+    </ul>
+  </header>
+
+  <div id="app"><p class="muted">正在加载播放器…</p></div>
+
+  <h2>怎么改视频</h2>
+  <p class="muted" style="margin:0">回到 Claude Code 会话，直接用一句话描述修改，例如：</p>
+  <ol class="howto muted">
+    <li><q>把标题改成“AI 会取代程序员吗？”</q></li>
+    <li><q>流程图镜头延长到 10 秒，片尾缩短到 3 秒</q></li>
+    <li><q>背景换成深绿色，强调色用橙色</q></li>
+    <li><q>重新渲染并更新预览页</q></li>
+  </ol>
+  <footer id="meta"></footer>
+</div>
+
+<script id="preview-data" type="application/json">/*PREVIEW_DATA*/</script>
+<script>/*PLAYER_JS*/</script>
+<script>
+  (function () {
+    var d = JSON.parse(document.getElementById('preview-data').textContent);
+    var meta = document.getElementById('meta');
+    var parts = [];
+    if (d.commit) parts.push('提交 ' + d.commit);
+    if (d.renderedAt) parts.push('页面生成于 ' + d.renderedAt);
+    meta.textContent = parts.join(' · ');
+    if (d.configUrl) {
+      var a = document.createElement('a');
+      a.href = d.configUrl; a.target = '_blank'; a.rel = 'noreferrer';
+      a.textContent = '查看配置文件';
+      meta.appendChild(document.createTextNode(parts.length ? ' · ' : ''));
+      meta.appendChild(a);
+    }
+  })();
+</script>
