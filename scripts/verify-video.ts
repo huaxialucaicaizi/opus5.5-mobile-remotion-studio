@@ -6,10 +6,36 @@ import {createHash} from 'node:crypto';
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {getTotalFrames} from '../src/config/timing.ts';
 import {videoConfig} from '../src/config/video.config.ts';
+import {getLeaderboardFrames, leaderboardConfig} from '../src/leaderboard/config.ts';
 
-const file = process.argv[2] ?? 'out/ai-explainer.mp4';
-const expectedFrames = getTotalFrames(videoConfig);
-const expectedDuration = expectedFrames / videoConfig.fps;
+// 用法：node scripts/verify-video.ts <文件> [--comp=AIExplainer|Leaderboard]
+const args = process.argv.slice(2);
+const file = args.find((a) => !a.startsWith('--')) ?? 'out/ai-explainer.mp4';
+const comp = args.find((a) => a.startsWith('--comp='))?.slice('--comp='.length) ?? 'AIExplainer';
+
+const specs = {
+  AIExplainer: {
+    width: videoConfig.width,
+    height: videoConfig.height,
+    fps: videoConfig.fps,
+    frames: getTotalFrames(videoConfig),
+    audio: videoConfig.audio.enabled,
+  },
+  Leaderboard: {
+    width: leaderboardConfig.width,
+    height: leaderboardConfig.height,
+    fps: leaderboardConfig.fps,
+    frames: getLeaderboardFrames(leaderboardConfig),
+    audio: leaderboardConfig.audio.enabled,
+  },
+};
+if (!(comp in specs)) {
+  console.error(`❌ 未知的合成 ${comp}，可选：${Object.keys(specs).join(' / ')}`);
+  process.exit(1);
+}
+const spec = specs[comp as keyof typeof specs];
+const expectedFrames = spec.frames;
+const expectedDuration = expectedFrames / spec.fps;
 
 type Check = {name: string; expected: string; actual: string; pass: boolean};
 const checks: Check[] = [];
@@ -50,17 +76,17 @@ const formatDuration = Number(probe.format.duration);
 
 check('容器格式', 'mp4', show(probe.format.format_name), String(probe.format.format_name).includes('mp4'));
 check('视频编码', 'h264', show(video?.codec_name), video?.codec_name === 'h264');
-check('分辨率', `${videoConfig.width}×${videoConfig.height}`, video ? `${video.width}×${video.height}` : '缺失',
-  video?.width === videoConfig.width && video?.height === videoConfig.height);
-check('帧率', `${videoConfig.fps} fps`, video ? `${fps} fps (${video.avg_frame_rate})` : '缺失', fps === videoConfig.fps);
+check('分辨率', `${spec.width}×${spec.height}`, video ? `${video.width}×${video.height}` : '缺失',
+  video?.width === spec.width && video?.height === spec.height);
+check('帧率', `${spec.fps} fps`, video ? `${fps} fps (${video.avg_frame_rate})` : '缺失', fps === spec.fps);
 check('总帧数', expectedFrames, show(video?.nb_read_frames), Number(video?.nb_read_frames) === expectedFrames);
 check('视频时长', `${expectedDuration.toFixed(3)} s`, seconds(video?.duration),
-  Math.abs(Number(video?.duration) - expectedDuration) < 1 / videoConfig.fps);
+  Math.abs(Number(video?.duration) - expectedDuration) < 1 / spec.fps);
 check('文件时长', `≈${expectedDuration} s`, seconds(formatDuration),
   Math.abs(formatDuration - expectedDuration) < 0.1);
 check('像素格式', 'yuv420p（手机兼容）', show(video?.pix_fmt), video?.pix_fmt === 'yuv420p');
 
-if (videoConfig.audio.enabled) {
+if (spec.audio) {
   check('音频轨道', '存在', audio ? '存在' : '缺失', Boolean(audio));
   check('音频编码', 'aac', show(audio?.codec_name), audio?.codec_name === 'aac');
   check('音频参数', '≥44.1 kHz', audio ? `${audio.sample_rate} Hz / ${audio.channels} ch` : '缺失',

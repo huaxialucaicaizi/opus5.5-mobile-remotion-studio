@@ -12,12 +12,17 @@
     "still": "remotion still AIExplainer out/poster.png --frame=45",
     "verify": "node scripts/verify-video.ts out/ai-explainer.mp4",
     "preview:build": "node scripts/build-preview.ts",
-    "bgm": "node scripts/generate-bgm.ts"
+    "bgm": "node scripts/generate-bgm.ts",
+    "render:leaderboard": "remotion render Leaderboard out/leaderboard.mp4",
+    "still:leaderboard": "remotion still Leaderboard out/leaderboard-poster.png --frame=75",
+    "verify:leaderboard": "node scripts/verify-video.ts out/leaderboard.mp4 --comp=Leaderboard",
+    "bgm:leaderboard": "node scripts/generate-leaderboard-audio.ts"
   },
   "engines": {
     "node": ">=22.18"
   },
   "dependencies": {
+    "@fontsource/zcool-kuaile": "5.3.0",
     "@remotion/cli": "4.0.539",
     "@remotion/player": "4.0.539",
     "react": "19.3.1",

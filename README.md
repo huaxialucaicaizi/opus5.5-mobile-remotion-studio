@@ -37,6 +37,21 @@
 | GitHub Actions 运行摘要 | 每次运行 | 列出运行环境、校验表、失败说明 |
 | claude.ai 预览页 | **不会自动更新**，需要 Claude 在会话里重新发布（说“更新预览页”即可） | — |
 
+## 作品：《大模型的「高考」：AI 榜单怎么看？》（`Leaderboard`）
+
+竖屏 1080×1920 · 30fps · 91 秒的可爱风科普动画。全片用"榜单 = 大模型的高考"做比喻：笔试（MMLU、GPQA、AIME、SWE-bench、HLE、中文榜）、面试（LMArena 双盲对战 + Elo 积分）、综合素质评价、三个坑（泄题、卷子太简单、面试嘴甜），最后讲"像报志愿一样看榜"。
+
+- **刻意不写当前名次**：榜单每周都在变，写死名次很快就会过时
+- **画风**：马卡龙色圆滚滚小机器人（会眨眼、蹦跳、出汗、戴皇冠），贴纸风卡片，主持人"榜榜"用对话气泡讲解
+- **配乐**：`scripts/generate-leaderboard-audio.ts` 程序合成，没有版权问题。用马林巴、拨弦、拍手、钟琴，"三个坑"段换成小调跳音；啵、叮、弹簧、呃哦等音效的时间点都来自配置
+- **改内容**：只改 `src/leaderboard/config.ts`（台词用 `\n` 断行，每行不超过 13 字）；改了时间点后运行 `npm run bgm:leaderboard`
+
+| 命令 | 作用 |
+| --- | --- |
+| `npm run render:leaderboard` | 渲染 `out/leaderboard.mp4` |
+| `npm run verify:leaderboard` | 按 `Leaderboard` 规格校验 15 项 |
+| `npm run bgm:leaderboard` | 重新生成配乐 + 音效 |
+
 ## 改内容只改一个文件
 
 `src/config/video.config.ts` 包含全部可调内容：
