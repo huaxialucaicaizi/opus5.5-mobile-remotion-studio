@@ -539,6 +539,55 @@ const BarsScene: React.FC<{s: Extract<Scene, {kind: 'bars'}>; theme: Theme}> = (
   );
 };
 
+const GridScene: React.FC<{s: Extract<Scene, {kind: 'grid'}>; theme: Theme}> = ({s, theme}) => {
+  const {fps} = useVideoConfig();
+  const frame = useCurrentFrame();
+  return (
+    <>
+      <Heading theme={theme} chip={s.chip} title={s.title} size={76} />
+      <div style={{position: 'absolute', top: 420, left: 60, right: 60, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 34}}>
+        {s.tiles.map((tile, i) => {
+          const at = Math.round(tile.at * fps);
+          const pop = spring({frame: frame - at, fps, config: {damping: 9, mass: 0.6, stiffness: 170}});
+          return (
+            <div
+              key={i}
+              style={{
+                ...sticker(theme),
+                height: 270,
+                padding: '22px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                transform: `scale(${pop}) rotate(${(i % 2 ? 1.5 : -1.5) * (1 - pop * 0.5)}deg)`,
+                opacity: frame >= at ? 1 : 0,
+              }}
+            >
+              <div
+                style={{
+                  alignSelf: 'flex-start',
+                  ...sticker(theme, theme.colors[tile.color]),
+                  borderRadius: 18,
+                  boxShadow: `4px 5px 0 ${theme.ink}`,
+                  padding: '4px 16px',
+                  fontSize: tile.tag.length > 10 ? 32 : 38,
+                  color: theme.ink,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {tile.tag}
+              </div>
+              <div style={{fontSize: 50, color: theme.ink, marginTop: 4}}>{tile.name}</div>
+              <div style={{fontSize: 32, lineHeight: 1.35, color: theme.inkSoft, whiteSpace: 'pre-line'}}>{tile.desc}</div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{position: 'absolute', top: 1375, left: 0, right: 0, textAlign: 'center', fontSize: 34, color: theme.inkSoft}}>{s.note}</div>
+    </>
+  );
+};
+
 const PitfallsScene: React.FC<{s: Extract<Scene, {kind: 'pitfalls'}>; theme: Theme}> = ({s, theme}) => {
   const {fps} = useVideoConfig();
   const frame = useCurrentFrame();
@@ -778,6 +827,8 @@ export const SceneView: React.FC<{scene: Scene; theme: Theme}> = ({scene, theme}
         return <ArenaScene s={scene} theme={theme} />;
       case 'bars':
         return <BarsScene s={scene} theme={theme} />;
+      case 'grid':
+        return <GridScene s={scene} theme={theme} />;
       case 'pitfalls':
         return <PitfallsScene s={scene} theme={theme} />;
       case 'checklist':

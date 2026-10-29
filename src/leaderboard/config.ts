@@ -31,6 +31,7 @@ export type Scene =
       scores: {from: number; delta: number};
     })
   | (Base & {kind: 'bars'; note: string; bars: {label: string; value: number; color: BotColor; at: number}[]})
+  | (Base & {kind: 'grid'; note: string; tiles: {tag: string; name: string; desc: string; color: BotColor; at: number}[]})
   | (Base & {
       kind: 'pitfalls';
       pits: {title: string; desc: string; term: string; mood: 'sweat' | 'meh' | 'fancy'; at: number}[];
@@ -167,6 +168,25 @@ export const leaderboardConfig = {
       host: [{at: 0.5, text: '综合榜：分数、速度、\n价格一起看'}],
     },
     {
+      kind: 'grid',
+      duration: 15,
+      chip: '热门',
+      title: '博主常聊的「单科竞赛」',
+      note: '名次天天变，以各榜官网为准',
+      tiles: [
+        {tag: 'ARC-AGI', name: '智力题', desc: '人类觉得简单\nAI 却很头疼', color: 'lavender', at: 1.5},
+        {tag: 'LiveBench', name: '防泄题', desc: '定期换新题\n想背答案也难', color: 'mint', at: 3},
+        {tag: 'FrontierMath', name: '研究级数学', desc: '数学家出的\n前沿难题', color: 'lemon', at: 4.5},
+        {tag: 'Aider', name: '编程改代码', desc: '多种编程语言\n真刀真枪改代码', color: 'sky', at: 6},
+        {tag: 'Terminal-Bench', name: '智能体实操', desc: '自己动手\n在终端里干活', color: 'coral', at: 7.5},
+        {tag: 'OpenRouter', name: '人气榜', desc: '大家实际用得\n最多的模型', color: 'pink', at: 9},
+      ],
+      host: [
+        {at: 0.5, text: '还有这些热门榜，\n博主天天在聊'},
+        {at: 10.5, text: '每个榜考的不一样，\n要看清考的是什么'},
+      ],
+    },
+    {
       kind: 'pitfalls',
       duration: 15,
       chip: '注意',
@@ -265,6 +285,9 @@ export const getSfxEvents = (config: LeaderboardConfig) => {
         break;
       case 'bars':
         s.bars.forEach((b) => add(b.at, 'pop'));
+        break;
+      case 'grid':
+        s.tiles.forEach((tile) => add(tile.at, 'pop'));
         break;
       case 'pitfalls':
         s.pits.forEach((p) => add(p.at, 'buzz'));
