@@ -39,7 +39,7 @@
 
 ## 作品：《大模型的「高考」：AI 榜单怎么看？》（`Leaderboard`）
 
-竖屏 1080×1920 · 30fps · 106 秒的可爱风科普动画。全片用"榜单 = 大模型的高考"做比喻：笔试（MMLU、GPQA、AIME、SWE-bench、HLE、中文榜）、面试（LMArena 双盲对战 + Elo 积分）、综合素质评价、博主常聊的"单科竞赛"（ARC-AGI、LiveBench、FrontierMath、Aider、Terminal-Bench、OpenRouter 人气榜）、三个坑（泄题、卷子太简单、面试嘴甜），最后讲"像报志愿一样看榜"。
+竖屏 1080×1920 · 30fps · 109 秒的可爱风科普动画。全片用"榜单 = 大模型的高考"做比喻：笔试（MMLU、GPQA、AIME、SWE-bench、HLE、中文榜）、面试（LMArena 双盲对战 + Elo 积分）、综合素质评价（Artificial Analysis：智力指数 + 速度 + 价格）、博主常聊的"单科竞赛"（ARC-AGI、LiveBench、FrontierMath、Aider、Terminal-Bench、OpenRouter 人气榜）、三个坑（泄题、卷子太简单、面试嘴甜），最后讲"像报志愿一样看榜"。
 
 - **刻意不写当前名次**：榜单每周都在变，写死名次很快就会过时
 - **画风**：马卡龙色圆滚滚小机器人（会眨眼、蹦跳、出汗、戴皇冠），贴纸风卡片，主持人"榜榜"用对话气泡讲解

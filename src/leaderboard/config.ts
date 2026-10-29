@@ -30,7 +30,7 @@ export type Scene =
       scoreAt: number;
       scores: {from: number; delta: number};
     })
-  | (Base & {kind: 'bars'; note: string; bars: {label: string; value: number; color: BotColor; at: number}[]})
+  | (Base & {kind: 'bars'; intro: string; note: string; bars: {label: string; value: number; color: BotColor; at: number}[]})
   | (Base & {kind: 'grid'; note: string; tiles: {tag: string; name: string; desc: string; color: BotColor; at: number}[]})
   | (Base & {
       kind: 'pitfalls';
@@ -156,16 +156,20 @@ export const leaderboardConfig = {
     },
     {
       kind: 'bars',
-      duration: 6,
-      chip: '综合评价',
-      title: '综合素质评价',
-      note: '如 Artificial Analysis · 数值仅为示意',
+      duration: 9,
+      chip: '综合素质评价',
+      title: 'Artificial Analysis',
+      intro: '第三方统一测试，三项一起看',
+      note: '数值仅为示意，不代表任何模型的真实成绩',
       bars: [
-        {label: '考试分数', value: 0.82, color: 'lavender', at: 1},
-        {label: '答题速度', value: 0.64, color: 'sky', at: 1.5},
-        {label: '「学费」', value: 0.73, color: 'mint', at: 2},
+        {label: '智力指数（多场考试汇总）', value: 0.82, color: 'lavender', at: 1.5},
+        {label: '输出速度', value: 0.64, color: 'sky', at: 2.5},
+        {label: '价格（越便宜越好）', value: 0.73, color: 'mint', at: 3.5},
       ],
-      host: [{at: 0.5, text: '综合榜：分数、速度、\n价格一起看'}],
+      host: [
+        {at: 0.5, text: '博主最爱看的综合榜：\nArtificial Analysis'},
+        {at: 5, text: '多场考试汇成智力指数，\n再比速度和价格'},
+      ],
     },
     {
       kind: 'grid',

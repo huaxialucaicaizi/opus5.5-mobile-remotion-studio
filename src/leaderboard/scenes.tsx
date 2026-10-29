@@ -511,8 +511,9 @@ const BarsScene: React.FC<{s: Extract<Scene, {kind: 'bars'}>; theme: Theme}> = (
   const frame = useCurrentFrame();
   return (
     <>
-      <Heading theme={theme} chip={s.chip} title={s.title} />
-      <div style={{position: 'absolute', top: 500, left: 80, right: 80, ...sticker(theme), padding: '56px 50px', display: 'flex', flexDirection: 'column', gap: 56}}>
+      <Heading theme={theme} chip={s.chip} title={s.title} size={s.title.length > 12 ? 80 : 92} />
+      <div style={{position: 'absolute', top: 470, left: 80, right: 80, ...sticker(theme), padding: '44px 50px 56px', display: 'flex', flexDirection: 'column', gap: 46}}>
+        <div style={{fontSize: 44, color: theme.inkSoft, textAlign: 'center'}}>{s.intro}</div>
         {s.bars.map((b, i) => {
           const at = Math.round(b.at * fps);
           const fill = spring({frame: frame - at, fps, config: {damping: 14, mass: 0.8}});
