@@ -750,7 +750,7 @@ const OutroScene: React.FC<{s: Extract<Scene, {kind: 'outro'}>; theme: Theme}> =
         {s.title}
       </div>
       <div style={{position: 'absolute', top: 660, left: 0, right: 0, display: 'flex', justifyContent: 'center'}}>
-        <div style={{...sticker(theme, '#FF8FB1'), borderRadius: 999, padding: '14px 48px', fontSize: 56, color: '#FFFFFF', WebkitTextStroke: `1.5px ${theme.ink}`, transform: `scale(${sub})`}}>
+        <div style={{...sticker(theme, '#FFC2D4'), borderRadius: 999, padding: '14px 48px', fontSize: 56, color: theme.ink, transform: `scale(${sub})`}}>
           {s.subtitle}
         </div>
       </div>
